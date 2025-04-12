@@ -30,31 +30,37 @@ with st.spinner("Loading data..."):
         data_1m = pd.read_csv("data/spotify_data_sample.csv")
         st.sidebar.warning("⚠️ Using sample dataset (10k tracks) for demo")
 
-# Preprocess genre column (explode lists into individual genres)
+# ===================== 🔧 Preprocessing =====================
+# Clean 'data' (the file with genres)
 data['genres'] = data['genres'].apply(lambda x: eval(x) if isinstance(x, str) else [])
 data = data.explode('genres')
 
-# Merge genres into data_1m using track_name and artists
+# Standardize artist column name for merging
+data.rename(columns={'artists': 'artist_name'}, inplace=True)
+
+# Drop old genre column from data_1m if present
+if 'genre' in data_1m.columns:
+    data_1m.drop(columns=['genre'], inplace=True)
+
+# Merge genres from data into data_1m using artist_name
 if 'genres' not in data_1m.columns:
     data_1m = data_1m.merge(
-        data[['track_name', 'artists', 'genres']],
-        on=['track_name', 'artists'],
+        data[['artist_name', 'genres']],
+        on='artist_name',
         how='left'
     )
     data_1m['genres'] = data_1m['genres'].fillna("Unknown")
     data_1m = data_1m.explode('genres')
 
-
 st.title("🎵 Spotify Mood Dashboard")
 
-# Sidebar: Search and Filters
+# ===================== 🔍 Sidebar Filters =====================
 st.sidebar.header("Track Explorer")
 all_tracks = data_1m['track_name'].dropna().unique()
 search_query = st.sidebar.text_input("🔎 Search for a track", "")
 filtered_tracks = [track for track in all_tracks if search_query.lower() in track.lower()]
 selected_track = st.sidebar.selectbox("Choose a track to explore: ", filtered_tracks if filtered_tracks else all_tracks)
 
-# Genre filter
 st.sidebar.markdown("---")
 genres = sorted(data_1m['genres'].dropna().unique())
 selected_genres = st.sidebar.multiselect("🎵 Filter by Genre", genres)
@@ -63,7 +69,7 @@ if selected_genres:
     data = data[data['genres'].isin(selected_genres)]
     data_1m = data_1m[data_1m['genres'].isin(selected_genres)]
 
-# ================== Radar Chart ==================
+# ===================== 🌈 Radar Chart =====================
 st.subheader("🌟 Track Mood Breakdown (Radar Chart)")
 def plot_radar_interactive(track_name):
     track = data_1m[data_1m['track_name'] == track_name]
@@ -94,13 +100,14 @@ def plot_radar_interactive(track_name):
 
 plot_radar_interactive(selected_track)
 
-# ================== Fun Visual ==================
+# ===================== 🎉 Fun Visual =====================
 st.subheader("🎉 Enjoy the Vibes!")
 st.image("https://media.giphy.com/media/xT0xeJpnrWC4XWblEk/giphy.gif", caption="You're vibing with Spotify Moods 🎶", use_column_width=True)
 
-# ================== Mood Clustering ==================
+# ===================== 🔍 Mood Clusters =====================
 st.subheader("🧠 Mood Clusters Explained (PCA + KMeans)")
 st.markdown("Each dot is a song. We've grouped similar moods using AI. Colors = Vibes! 🎨")
+
 features = ['valence', 'energy', 'danceability', 'acousticness']
 X = data_1m[features].dropna()
 scaler = StandardScaler()
@@ -134,7 +141,7 @@ fig = px.scatter(
 fig.update_traces(marker=dict(size=5))
 st.plotly_chart(fig, use_container_width=True)
 
-# ================== Mood Map (Valence vs Energy) ==================
+# ===================== 🎨 Mood Map =====================
 st.subheader("🎨 Mood Map: Valence vs Energy by Genre (Interactive)")
 try:
     fig = px.scatter(
@@ -142,7 +149,7 @@ try:
         x="valence",
         y="energy",
         color="genres",
-        hover_data=["artists"],
+        hover_data=["artist_name"],
         title="🎨 Mood Map: Valence vs Energy by Genre",
     )
     st.image("https://media.giphy.com/media/l0MYAflMmG3QvNfIA/giphy.gif", width=150)
@@ -159,7 +166,7 @@ except Exception as e:
     except Exception as fallback_error:
         st.error(f"Both Plotly and Matplotlib failed. Error: {fallback_error}")
 
-# ================== Predicting Popularity ==================
+# ===================== 🔮 Popularity Prediction =====================
 st.subheader("🔮 Predicting Popularity (ML Model)")
 try:
     X_pop = data_1m[features].dropna()
@@ -191,9 +198,8 @@ try:
 except Exception as e:
     st.error(f"Error in popularity prediction: {e}")
 
-# ================== Top 20 Streamed Songs of 2024 ==================
+# ===================== 🔥 Top Songs of 2024 =====================
 st.subheader("🔥 Top 20 Streamed Songs of 2024")
-
 try:
     top_20 = data_2024.sort_values("Spotify Streams", ascending=False).head(20)
     fig = px.bar(
@@ -210,7 +216,7 @@ try:
 except Exception as e:
     st.error(f"Couldn't load top 20 chart: {e}")
 
-# ================== Smart Mood Recommender ==================
+# ===================== 🧠 Smart Mood Recommender =====================
 st.subheader("🧠 Smart Mood Recommender")
 
 col1, col2 = st.columns(2)
@@ -237,20 +243,20 @@ recommendations = data[
 if not recommendations.empty:
     st.success("🎯 Based on your mood and genre, here are some recommendations:")
     for i, row in recommendations.iterrows():
-        st.markdown(f"**{row['track_name']}** by *{row['artists']}* — Popularity: {row['popularity']}")
+        st.markdown(f"**{row['track_name']}** by *{row['artist_name']}* — Popularity: {row['popularity']}")
 else:
     st.info("🙁 No matching songs found. Try adjusting your mood or genre.")
 
-# ================== Surprise Me Button ==================
+# ===================== 🎲 Surprise Me =====================
 if st.button("🎲 Surprise Me with a Track!"):
     surprise = data_1m.sample(1).iloc[0]
-    st.info(f"🎵 Track: **{surprise['track_name']}** by *{surprise['artists']}* | Genre: {surprise['genres']} | Popularity: {surprise['popularity']}")
+    st.info(f"🎵 Track: **{surprise['track_name']}** by *{surprise['artist_name']}* | Genre: {surprise['genres']} | Popularity: {surprise['popularity']}")
     if surprise['popularity'] > 80:
         st.balloons()
     elif surprise['popularity'] < 30:
         st.snow()
 
-# ================== Theme Setup Instructions ==================
+# ===================== 🎨 Theme Instructions =====================
 with st.expander("🎨 How to Apply Streamlit Theme"):
     st.code("""
 # Inside .streamlit/config.toml
@@ -260,4 +266,4 @@ primaryColor="#1DB954"
 backgroundColor="#121212"
 secondaryBackgroundColor="#191414"
 textColor="#FFFFFF"
-    """)
+""")

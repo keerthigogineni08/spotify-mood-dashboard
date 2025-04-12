@@ -135,7 +135,7 @@ else:
     data_1m['Cluster'] = clusters
     data_1m['Mood'] = data_1m['Cluster'].map(mood_labels)
 
-    fig = px.scatter(
+    fig_clusters = px.scatter(
         x=X_pca[:, 0],
         y=X_pca[:, 1],
         color=data_1m['Mood'],
@@ -144,75 +144,43 @@ else:
         opacity=0.7,
         width=1000
     )
-    fig.update_traces(marker=dict(size=5))
-    st.plotly_chart(fig, use_container_width=True)
+    fig_clusters.update_traces(marker=dict(size=5))
+    st.plotly_chart(fig_clusters, use_container_width=True)
 
-scaler = StandardScaler()
-X_scaled = scaler.fit_transform(X)
+    with st.expander("ℹ️ What are mood clusters?"):
+        st.markdown("We used PCA + KMeans to group songs with similar moods. This helps us identify types of songs based on feel, not just genre.")
 
-pca = PCA(n_components=2)
-X_pca = pca.fit_transform(X_scaled)
-
-kmeans = KMeans(n_clusters=5, random_state=42, n_init='auto')
-clusters = kmeans.fit_predict(X_pca)
-
-mood_labels = {
-    0: "Chill & Mellow",
-    1: "Party Hype",
-    2: "Sad Bops",
-    3: "Confident Bangers",
-    4: "Acoustic Vibes"
-}
-data_1m['Cluster'] = clusters
-data_1m['Mood'] = data_1m['Cluster'].map(mood_labels)
-
-fig = px.scatter(
-    x=X_pca[:, 0],
-    y=X_pca[:, 1],
-    color=data_1m['Mood'],
-    labels={'x': 'PCA 1', 'y': 'PCA 2'},
-    title="🧠 Mood Clusters (AI-generated) 🎨",
-    opacity=0.7,
-    width=1000
-)
-fig.update_traces(marker=dict(size=5))
-st.plotly_chart(fig, use_container_width=True)
-
-with st.expander("ℹ️ What are mood clusters?"):
-    st.markdown("We used PCA + KMeans to group songs with similar moods. This helps us identify types of songs based on feel, not just genre.")
-
-st.markdown("## 🎨 AI Mood Clusters")
-st.caption("Songs grouped using AI based on sound similarity. Each color is a mood category like Chill, Sad Bops, or Hype.")
-
+    st.markdown("## 🎨 AI Mood Clusters")
+    st.caption("Songs grouped using AI based on sound similarity. Each color is a mood category like Chill, Sad Bops, or Hype.")
 
 # ===================== 🎨 Mood Map =====================
-st.subheader("🎨 Mood Map: Valence vs Energy by Genre (Interactive)")
-st.markdown("This chart maps songs by **happiness (valence)** vs **intensity (energy)**. Each dot is a song, color = genre 🎨")
+st.subheader("🎨 Mood Map: Valence vs Energy by Mood (Interactive)")
+st.markdown("This chart maps songs by **happiness (valence)** vs **intensity (energy)**. Each dot is a song, color = mood 🎨")
 
 try:
     plot_data = data_1m.sample(n=1000, random_state=42) if len(data_1m) > 1000 else data_1m
-    fig = px.scatter(
-        data_frame=data,
+    fig_mood_map = px.scatter(
+        data_frame=plot_data,
         x="valence",
         y="energy",
         color="Mood",
-        hover_data=["artist_name"],
-        title="🎨 Mood Map: Valence vs Energy by Genre",
+        hover_data=["artist_name", "track_name"],
+        title="🎨 Mood Map: Valence vs Energy by Mood",
     )
     st.image("https://media.giphy.com/media/l0MYAflMmG3QvNfIA/giphy.gif", width=150)
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig_mood_map, use_container_width=True)
 except Exception as e:
     st.warning("Could not load Plotly chart. Showing fallback.")
     try:
-        fig, ax = plt.subplots(figsize=(10, 6))
-        sns.scatterplot(data=data, x="valence", y="energy", hue="genres", alpha=0.6, ax=ax, legend=False)
+        fig_fallback, ax = plt.subplots(figsize=(10, 6))
+        sns.scatterplot(data=data_1m, x="valence", y="energy", hue="Mood", alpha=0.6, ax=ax, legend=False)
         ax.set_title("Mood Map")
         ax.set_xlabel("Valence")
         ax.set_ylabel("Energy")
-        st.pyplot(fig)  # ✅ pass the figure object
-
+        st.pyplot(fig_fallback)
     except Exception as fallback_error:
         st.error(f"Both Plotly and Matplotlib failed. Error: {fallback_error}")
+
 
 # ===================== 🎉 Fun Visual =====================
 st.subheader("🎉 Enjoy the Vibes!")

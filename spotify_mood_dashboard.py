@@ -173,7 +173,7 @@ top_20 = data_2024.sort_values("Spotify Streams", ascending=False).head(20)
 fig = px.bar(
     top_20,
     x="Spotify Streams",
-    y="Track Name",
+    y="Track",
     color="Artist",
     orientation="h",
     title="🔥 Top 20 Most Streamed Songs of 2024",

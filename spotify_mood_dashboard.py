@@ -33,8 +33,17 @@ with st.spinner("Loading data..."):
 # Preprocess genre column (explode lists into individual genres)
 data['genres'] = data['genres'].apply(lambda x: eval(x) if isinstance(x, str) else [])
 data = data.explode('genres')
-data_1m['genres'] = data_1m['genres'].apply(lambda x: eval(x) if isinstance(x, str) else [])
-data_1m = data_1m.explode('genres')
+
+# Merge genres into data_1m using track_name and artists
+if 'genres' not in data_1m.columns:
+    data_1m = data_1m.merge(
+        data[['track_name', 'artists', 'genres']],
+        on=['track_name', 'artists'],
+        how='left'
+    )
+    data_1m['genres'] = data_1m['genres'].fillna("Unknown")
+    data_1m = data_1m.explode('genres')
+
 
 st.title("🎵 Spotify Mood Dashboard")
 
@@ -47,7 +56,7 @@ selected_track = st.sidebar.selectbox("Choose a track to explore: ", filtered_tr
 
 # Genre filter
 st.sidebar.markdown("---")
-genres = sorted(data['genres'].dropna().unique())
+genres = sorted(data_1m['genres'].dropna().unique())
 selected_genres = st.sidebar.multiselect("🎵 Filter by Genre", genres)
 
 if selected_genres:

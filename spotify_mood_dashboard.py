@@ -65,6 +65,9 @@ st.sidebar.markdown("---")
 genres = sorted(data_1m['genres'].dropna().unique())
 selected_genres = st.sidebar.multiselect("🎵 Filter by Genre", genres)
 
+if st.sidebar.button("🔁 Reset Genre Filters"):
+    selected_genres = []
+
 if selected_genres:
     data = data[data['genres'].isin(selected_genres)]
     data_1m = data_1m[data_1m['genres'].isin(selected_genres)]
@@ -108,6 +111,42 @@ st.markdown("Each dot is a song. We've grouped similar moods using AI. Colors = 
 
 features = ['valence', 'energy', 'danceability', 'acousticness']
 X = data_1m[features].dropna()
+
+if X.empty:
+    st.warning("Not enough data to cluster moods. Try selecting more genres or resetting filters.")
+else:
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
+
+    pca = PCA(n_components=2)
+    X_pca = pca.fit_transform(X_scaled)
+
+    kmeans = KMeans(n_clusters=5, random_state=42, n_init='auto')
+    clusters = kmeans.fit_predict(X_pca)
+
+    mood_labels = {
+        0: "Chill & Mellow",
+        1: "Party Hype",
+        2: "Sad Bops",
+        3: "Confident Bangers",
+        4: "Acoustic Vibes"
+    }
+
+    data_1m['Cluster'] = clusters
+    data_1m['Mood'] = data_1m['Cluster'].map(mood_labels)
+
+    fig = px.scatter(
+        x=X_pca[:, 0],
+        y=X_pca[:, 1],
+        color=data_1m['Mood'],
+        labels={'x': 'PCA 1', 'y': 'PCA 2'},
+        title="🧠 Mood Clusters (AI-generated) 🎨",
+        opacity=0.7,
+        width=1000
+    )
+    fig.update_traces(marker=dict(size=5))
+    st.plotly_chart(fig, use_container_width=True)
+
 scaler = StandardScaler()
 X_scaled = scaler.fit_transform(X)
 

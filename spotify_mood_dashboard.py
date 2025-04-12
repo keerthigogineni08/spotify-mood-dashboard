@@ -10,6 +10,8 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
 from math import pi
+import os
+import streamlit as st
 
 # Set page layout
 st.set_page_config(layout="wide", page_title="Spotify Mood Dashboard", page_icon="🎵")
@@ -19,6 +21,14 @@ sns.set(style="whitegrid")
 data = pd.read_csv("data/data_w_genres.csv")
 data_1m = pd.read_csv("data/spotify_data.csv")
 data_2024 = pd.read_csv("data/Most Streamed Spotify Songs 2024.csv", encoding="ISO-8859-1")
+
+# Check for full dataset first
+if os.path.exists("data/spotify_data.csv"):
+    data_1m = pd.read_csv("data/spotify_data.csv")
+    st.sidebar.success("✅ Loaded full dataset (1M tracks)")
+else:
+    data_1m = pd.read_csv("data/spotify_data_sample.csv")
+    st.sidebar.warning("⚠️ Using sample dataset (10k tracks) for demo")
 
 st.title("🎵 Spotify Mood Dashboard")
 

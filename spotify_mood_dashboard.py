@@ -167,7 +167,7 @@ try:
         hover_data=["artist_name", "track_name"],
         title="🎨 Mood Map: Valence vs Energy by Mood",
     )
-    st.image("https://media.giphy.com/media/l0MYAflMmG3QvNfIA/giphy.gif", width=150)
+    st.image("https://media.giphy.com/media/xT9IgzoKnwFNmISR8I/giphy.gif", width=150)
     st.plotly_chart(fig_mood_map, use_container_width=True)
 except Exception as e:
     st.warning("Could not load Plotly chart. Showing fallback.")

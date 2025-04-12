@@ -151,6 +151,7 @@ st.subheader("🎨 Mood Map: Valence vs Energy by Genre (Interactive)")
 st.markdown("This chart maps songs by **happiness (valence)** vs **intensity (energy)**. Each dot is a song, color = genre 🎨")
 
 try:
+    plot_data = data_1m.sample(n=1000, random_state=42) if len(data_1m) > 1000 else data_1m
     fig = px.scatter(
         data_frame=data,
         x="valence",
@@ -178,11 +179,11 @@ except Exception as e:
 st.subheader("🎉 Enjoy the Vibes!")
 
 gif_map = {
-    "Chill & Mellow": "https://media.giphy.com/media/l0MYAflMmG3QvNfIA/giphy.gif",
-    "Party Hype": "https://media.giphy.com/media/3oEjI6SIIHBdRxXI40/giphy.gif",
-    "Sad Bops": "https://media.giphy.com/media/26ufdipQqU2lhNA4g/giphy.gif",
-    "Confident Bangers": "https://media.giphy.com/media/xT0xeJpnrWC4XWblEk/giphy.gif",
-    "Acoustic Vibes": "https://media.giphy.com/media/l0HlUQ8J0U4QnPIIE/giphy.gif"
+    "Chill & Mellow": "https://media.giphy.com/media/3o7aCTfyhYawdOXcFW/giphy.gif",
+    "Party Hype": "https://media.giphy.com/media/l0MYt5jPR6QX5pnqM/giphy.gif",
+    "Sad Bops": "https://media.giphy.com/media/l0HlHFRbmaZtBRhXG/giphy.gif",
+    "Confident Bangers": "https://media.giphy.com/media/3o6ZsX2PUNLpmj7pQI/giphy.gif",
+    "Acoustic Vibes": "https://media.giphy.com/media/d2lcHJTG5Tscg/giphy.gif"
 }
 
 if selected_track and 'Mood' in data_1m.columns:

@@ -99,6 +99,7 @@ st.pyplot(fig)
 
 # ================== Mood Map (Valence vs Energy) ==================
 st.subheader("🎨 Mood Map: Valence vs Energy by Genre")
+
 try:
     import plotly.express as px
     fig = px.scatter(
@@ -107,15 +108,15 @@ try:
         y="energy",
         color="genres",
         hover_data=["artists"],
-        title="🎨 Mood Map: Valence vs Energy by Genre"
+        title="🎨 Mood Map: Valence vs Energy by Genre (Interactive)"
     )
-    st.plotly_chart(fig)
+    st.plotly_chart(fig, use_container_width=True)  # ✅ This is key for Streamlit
 except ImportError:
-    st.warning("Plotly not installed. Falling back to matplotlib.")
-    fig, ax = plt.subplots(figsize=(10, 6))
-    sns.scatterplot(data=data, x="valence", y="energy", hue="genres", alpha=0.6, legend=False, ax=ax)
-    ax.set_title("Mood Map: Valence vs Energy")
-    st.pyplot(fig)
+    st.warning("Plotly is not installed. Showing fallback chart.")
+    plt.figure(figsize=(10, 6))
+    sns.scatterplot(data=data, x="valence", y="energy", hue="genres", alpha=0.6, legend=False)
+    plt.title("🎨 Mood Map: Valence vs Energy by Genre")
+    st.pyplot()
 
 # ================== Popularity Prediction ==================
 st.subheader("🔮 Predicting Popularity (ML Model)")

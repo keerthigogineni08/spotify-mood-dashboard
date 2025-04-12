@@ -164,18 +164,18 @@ try:
 except Exception as e:
     st.warning("Could not load Plotly chart. Showing fallback.")
     try:
-        plt.figure(figsize=(10, 6))
-        sns.scatterplot(data=data, x="valence", y="energy", hue="genres", alpha=0.6, legend=False)
-        plt.title("Mood Map")
-        plt.xlabel("Valence")
-        plt.ylabel("Energy")
-        st.pyplot()
+        fig, ax = plt.subplots(figsize=(10, 6))
+        sns.scatterplot(data=data, x="valence", y="energy", hue="genres", alpha=0.6, ax=ax, legend=False)
+        ax.set_title("Mood Map")
+        ax.set_xlabel("Valence")
+        ax.set_ylabel("Energy")
+        st.pyplot(fig)  # ✅ pass the figure object
+
     except Exception as fallback_error:
         st.error(f"Both Plotly and Matplotlib failed. Error: {fallback_error}")
 
 # ===================== 🎉 Fun Visual =====================
 st.subheader("🎉 Enjoy the Vibes!")
-#st.image("https://media.giphy.com/media/xT0xeJpnrWC4XWblEk/giphy.gif", caption="You're vibing with Spotify Moods 🎶", use_column_width=True)
 
 gif_map = {
     "Chill & Mellow": "https://media.giphy.com/media/l0MYAflMmG3QvNfIA/giphy.gif",
@@ -185,14 +185,16 @@ gif_map = {
     "Acoustic Vibes": "https://media.giphy.com/media/l0HlUQ8J0U4QnPIIE/giphy.gif"
 }
 
-if selected_track:
-    mood = data_1m.loc[data_1m['track_name'] == selected_track, 'Mood'].values[0]
-    if not mood_row.empty and 'Mood' in mood_row.columns:
+if selected_track and 'Mood' in data_1m.columns:
+    mood_row = data_1m[data_1m['track_name'] == selected_track]
+    if not mood_row.empty:
         mood = mood_row['Mood'].values[0]
     else:
-        mood = "Chill & Mellow"  # default fallback
+        mood = "Chill & Mellow"
+else:
+    mood = "Chill & Mellow"
 
-st.image(gif_map.get(mood, gif_map["Chill & Mellow"]), caption="You're vibing with Spotify Moods 🎶", use_container_width=True)
+st.image(gif_map.get(mood, gif_map["Chill & Mellow"]), caption=f"You're vibing with {mood} 🎶", use_container_width=True)
 
 # ===================== 🔮 Popularity Prediction =====================
 st.subheader("🔮 Predicting Popularity (ML Model)")

@@ -19,7 +19,7 @@ sns.set(style="whitegrid")
 
 # Load Data
 data = pd.read_csv("data/data_w_genres.csv")
-data_1m = pd.read_csv("data/spotify_data.csv")
+#data_1m = pd.read_csv("data/spotify_data.csv")
 data_2024 = pd.read_csv("data/Most Streamed Spotify Songs 2024.csv", encoding="ISO-8859-1")
 
 # Check for full dataset first

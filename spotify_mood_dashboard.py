@@ -71,6 +71,7 @@ if selected_genres:
 
 # ===================== 🌈 Radar Chart =====================
 st.subheader("🌟 Track Mood Breakdown (Radar Chart)")
+
 def plot_radar_interactive(track_name):
     track = data_1m[data_1m['track_name'] == track_name]
     if track.empty:
@@ -100,9 +101,25 @@ def plot_radar_interactive(track_name):
 
 plot_radar_interactive(selected_track)
 
+st.markdown("## 🎯 Track Mood Breakdown (Radar Chart)")
+st.caption("Understand how a selected song scores across musical moods like danceability, valence, and energy.")
+
+
 # ===================== 🎉 Fun Visual =====================
 st.subheader("🎉 Enjoy the Vibes!")
-st.image("https://media.giphy.com/media/xT0xeJpnrWC4XWblEk/giphy.gif", caption="You're vibing with Spotify Moods 🎶", use_column_width=True)
+#st.image("https://media.giphy.com/media/xT0xeJpnrWC4XWblEk/giphy.gif", caption="You're vibing with Spotify Moods 🎶", use_column_width=True)
+
+gif_map = {
+    "Chill & Mellow": "https://media.giphy.com/media/l0MYAflMmG3QvNfIA/giphy.gif",
+    "Party Hype": "https://media.giphy.com/media/3oEjI6SIIHBdRxXI40/giphy.gif",
+    "Sad Bops": "https://media.giphy.com/media/26ufdipQqU2lhNA4g/giphy.gif",
+    "Confident Bangers": "https://media.giphy.com/media/xT0xeJpnrWC4XWblEk/giphy.gif",
+    "Acoustic Vibes": "https://media.giphy.com/media/l0HlUQ8J0U4QnPIIE/giphy.gif"
+}
+
+if selected_track:
+    mood = data_1m.loc[data_1m['track_name'] == selected_track, 'Mood'].values[0]
+    st.image(gif_map.get(mood, gif_map["Chill & Mellow"]), caption="You're vibing with Spotify Moods 🎶", use_container_width=True)
 
 # ===================== 🔍 Mood Clusters =====================
 st.subheader("🧠 Mood Clusters Explained (PCA + KMeans)")
@@ -141,14 +158,23 @@ fig = px.scatter(
 fig.update_traces(marker=dict(size=5))
 st.plotly_chart(fig, use_container_width=True)
 
+with st.expander("ℹ️ What are mood clusters?"):
+    st.markdown("We used PCA + KMeans to group songs with similar moods. This helps us identify types of songs based on feel, not just genre.")
+
+st.markdown("## 🎨 AI Mood Clusters")
+st.caption("Songs grouped using AI based on sound similarity. Each color is a mood category like Chill, Sad Bops, or Hype.")
+
+
 # ===================== 🎨 Mood Map =====================
 st.subheader("🎨 Mood Map: Valence vs Energy by Genre (Interactive)")
+st.markdown("This chart maps songs by **happiness (valence)** vs **intensity (energy)**. Each dot is a song, color = genre 🎨")
+
 try:
     fig = px.scatter(
         data_frame=data,
         x="valence",
         y="energy",
-        color="genres",
+        color="Mood",
         hover_data=["artist_name"],
         title="🎨 Mood Map: Valence vs Energy by Genre",
     )
@@ -235,9 +261,9 @@ mood_filters = {
 
 val_min, val_max = mood_filters[mood_pick]
 
-recommendations = data[
-    (data['genres'] == fav_genre) &
-    (data['valence'].between(val_min, val_max))
+recommendations = data_1m[
+    (data_1m['genres'] == fav_genre) &
+    (data_1m['valence'].between(val_min, val_max))
 ].sort_values("popularity", ascending=False).head(5)
 
 if not recommendations.empty:

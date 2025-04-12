@@ -31,6 +31,16 @@ with st.spinner("Loading data..."):
 
 st.title("🎵 Spotify Mood Dashboard")
 
+# Clean and flatten genres from stringified lists
+def extract_genres(genre_str):
+    try:
+        return eval(genre_str) if isinstance(genre_str, str) else []
+    except:
+        return []
+
+all_genre_lists = data['genres'].dropna().apply(extract_genres)
+flat_genres = sorted(set([g for sublist in all_genre_lists for g in sublist]))
+
 # Sidebar: Search and Filters
 st.sidebar.header("Track Explorer")
 all_tracks = data_1m['track_name'].dropna().unique()
@@ -38,14 +48,24 @@ search_query = st.sidebar.text_input("🔎 Search for a track", "")
 filtered_tracks = [track for track in all_tracks if search_query.lower() in track.lower()]
 selected_track = st.sidebar.selectbox("Choose a track to explore: ", filtered_tracks if filtered_tracks else all_tracks)
 
+
 # Genre filter
 st.sidebar.markdown("---")
 genres = data['genres'].dropna().unique()
-selected_genres = st.sidebar.multiselect("🎵 Filter by Genre", genres)
+selected_genres = st.sidebar.multiselect("🎵 Filter by Genre", flat_genres)
+
 
 if selected_genres:
-    data = data[data['genres'].isin(selected_genres)]
-    data_1m = data_1m[data_1m['genres'].isin(selected_genres)]
+    def has_selected_genre(genre_str):
+        try:
+            genre_list = eval(genre_str)
+            return any(g in genre_list for g in selected_genres)
+        except:
+            return False
+
+    data = data[data['genres'].apply(has_selected_genre)]
+    data_1m = data_1m[data_1m['track_name'].isin(data['track_name'])]
+
 
 # ================== Radar Chart ==================
 st.subheader("🌟 Track Mood Breakdown (Radar Chart)")
@@ -188,11 +208,11 @@ st.subheader("🧠 Smart Mood Recommender")
 
 col1, col2 = st.columns(2)
 with col1:
-    fav_genre = st.selectbox("🎧 Select your favorite genre:", sorted(data_1m['genres'].dropna().unique()))
+    fav_genre = st.selectbox("🎧 Select your favorite genre:", sorted(data['genres'].dropna().unique()))
 with col2:
     mood_pick = st.select_slider("🎭 Pick your mood preference:", options=["Chill", "Sad", "Energetic", "Happy", "Mellow"])
 
-# Map mood pick to valence/energy range
+# Define mood filter ranges
 mood_filters = {
     "Chill": (0.2, 0.5),
     "Sad": (0.0, 0.4),
@@ -203,9 +223,10 @@ mood_filters = {
 
 val_min, val_max = mood_filters[mood_pick]
 
-recommendations = data_1m[
-    (data_1m['genres'] == fav_genre) &
-    (data_1m['valence'].between(val_min, val_max))
+# Use `data` here instead of data_1m
+recommendations = data[
+    (data['genres'] == fav_genre) &
+    (data['valence'].between(val_min, val_max))
 ].sort_values("popularity", ascending=False).head(5)
 
 if not recommendations.empty:

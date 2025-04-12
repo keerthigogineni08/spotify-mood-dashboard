@@ -1,8 +1,10 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
+import plotly.express as px
 import seaborn as sns
 import numpy as np
+import os
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
@@ -10,8 +12,7 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
 from math import pi
-import os
-import streamlit as st
+
 
 # Set page layout
 st.set_page_config(layout="wide", page_title="Spotify Mood Dashboard", page_icon="🎵")
@@ -98,7 +99,7 @@ ax.set_ylabel("PCA 2")
 st.pyplot(fig)
 
 # ================== Mood Map (Valence vs Energy) ==================
-st.subheader("🎨 Mood Map: Valence vs Energy by Genre")
+st.subheader("🎨 Mood Map: Valence vs Energy by Genre (Interactive)")
 
 try:
     import plotly.express as px
@@ -108,27 +109,38 @@ try:
         y="energy",
         color="genres",
         hover_data=["artists"],
-        title="🎨 Mood Map: Valence vs Energy by Genre (Interactive)"
+        title="🎨 Mood Map: Valence vs Energy by Genre",
     )
-    st.plotly_chart(fig, use_container_width=True)  # ✅ This is key for Streamlit
-except ImportError:
-    st.warning("Plotly is not installed. Showing fallback chart.")
-    plt.figure(figsize=(10, 6))
-    sns.scatterplot(data=data, x="valence", y="energy", hue="genres", alpha=0.6, legend=False)
-    plt.title("🎨 Mood Map: Valence vs Energy by Genre")
-    st.pyplot()
+    st.plotly_chart(fig, use_container_width=True)  # ✅ Best for Streamlit layout
+except Exception as e:
+    st.warning("⚠️ Could not load interactive chart. Showing fallback version.")
+    try:
+        plt.figure(figsize=(10, 6))
+        sns.scatterplot(data=data, x="valence", y="energy", hue="genres", alpha=0.6, legend=False)
+        plt.title("🎨 Mood Map: Valence vs Energy by Genre")
+        plt.xlabel("Valence (Happiness)")
+        plt.ylabel("Energy")
+        st.pyplot()
+    except Exception as fallback_error:
+        st.error(f"❌ Both Plotly and Matplotlib failed.\nError: {fallback_error}")
 
-# ================== Popularity Prediction ==================
+# =================== Predicting Popularity ===================
 st.subheader("🔮 Predicting Popularity (ML Model)")
-X_pop = data_1m[features].dropna()
-y_pop = data_1m.loc[X_pop.index, 'popularity']
 
-X_train, X_test, y_train, y_test = train_test_split(X_pop, y_pop, test_size=0.2, random_state=42)
-model = RandomForestRegressor(n_estimators=100, random_state=42)
-model.fit(X_train, y_train)
-preds = model.predict(X_test)
-rmse = mean_squared_error(y_test, preds, squared=False)
-st.write(f"RMSE of the model: {rmse:.2f}")
+try:
+    X_pop = data_1m[features].dropna()
+    y_pop = data_1m.loc[X_pop.index, 'popularity']
+
+    X_train, X_test, y_train, y_test = train_test_split(X_pop, y_pop, test_size=0.2, random_state=42)
+    model = RandomForestRegressor(n_estimators=100, random_state=42)
+    model.fit(X_train, y_train)
+    preds = model.predict(X_test)
+
+    # Use squared=True for compatibility (or check version)
+    rmse = mean_squared_error(y_test, preds) ** 0.5
+    st.success(f"🎯 Popularity Prediction RMSE: {rmse:.2f}")
+except Exception as e:
+    st.error(f"Error in popularity prediction: {e}")
 
 # ================== 2024 Highlights ==================
 st.subheader("🔥 Most Streamed Songs of 2024")

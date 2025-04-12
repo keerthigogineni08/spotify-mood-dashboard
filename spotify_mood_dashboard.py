@@ -12,6 +12,7 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
 from math import pi
+import random
 
 # Set page layout
 st.set_page_config(layout="wide", page_title="Spotify Mood Dashboard", page_icon="🎵")
@@ -29,17 +30,13 @@ with st.spinner("Loading data..."):
         data_1m = pd.read_csv("data/spotify_data_sample.csv")
         st.sidebar.warning("⚠️ Using sample dataset (10k tracks) for demo")
 
+# Preprocess genre column (explode lists into individual genres)
+data['genres'] = data['genres'].apply(lambda x: eval(x) if isinstance(x, str) else [])
+data = data.explode('genres')
+data_1m['genres'] = data_1m['genres'].apply(lambda x: eval(x) if isinstance(x, str) else [])
+data_1m = data_1m.explode('genres')
+
 st.title("🎵 Spotify Mood Dashboard")
-
-# Clean and flatten genres from stringified lists
-def extract_genres(genre_str):
-    try:
-        return eval(genre_str) if isinstance(genre_str, str) else []
-    except:
-        return []
-
-all_genre_lists = data['genres'].dropna().apply(extract_genres)
-flat_genres = sorted(set([g for sublist in all_genre_lists for g in sublist]))
 
 # Sidebar: Search and Filters
 st.sidebar.header("Track Explorer")
@@ -48,28 +45,18 @@ search_query = st.sidebar.text_input("🔎 Search for a track", "")
 filtered_tracks = [track for track in all_tracks if search_query.lower() in track.lower()]
 selected_track = st.sidebar.selectbox("Choose a track to explore: ", filtered_tracks if filtered_tracks else all_tracks)
 
-
 # Genre filter
 st.sidebar.markdown("---")
-genres = data['genres'].dropna().unique()
-selected_genres = st.sidebar.multiselect("🎵 Filter by Genre", flat_genres)
-
+genres = sorted(data['genres'].dropna().unique())
+selected_genres = st.sidebar.multiselect("🎵 Filter by Genre", genres)
 
 if selected_genres:
-    def has_selected_genre(genre_str):
-        try:
-            genre_list = eval(genre_str)
-            return any(g in genre_list for g in selected_genres)
-        except:
-            return False
-
-    data = data[data['genres'].apply(has_selected_genre)]
-    data_1m = data_1m[data_1m['track_name'].isin(data['track_name'])]
-
+    data = data[data['genres'].isin(selected_genres)]
+    data_1m = data_1m[data_1m['genres'].isin(selected_genres)]
 
 # ================== Radar Chart ==================
 st.subheader("🌟 Track Mood Breakdown (Radar Chart)")
-def plot_radar(track_name):
+def plot_radar_interactive(track_name):
     track = data_1m[data_1m['track_name'] == track_name]
     if track.empty:
         st.warning(f"Track '{track_name}' not found.")
@@ -81,28 +68,30 @@ def plot_radar(track_name):
 
     mean_vals = data_1m[labels].mean()
     std_vals = data_1m[labels].std()
-    values = [(row[label] - mean_vals[label]) / std_vals[label] for label in labels]
+    z_scores = [(row[label] - mean_vals[label]) / std_vals[label] for label in labels]
 
-    values += values[:1]  # loop
-    angles = [n / float(len(labels)) * 2 * pi for n in range(len(labels))]
-    angles += angles[:1]
+    labels += [labels[0]]
+    z_scores += [z_scores[0]]
 
-    fig, ax = plt.subplots(figsize=(6, 6), subplot_kw=dict(polar=True))
-    ax.plot(angles, values, linewidth=2)
-    ax.fill(angles, values, alpha=0.4)
-    ax.set_xticks(angles[:-1])
-    ax.set_xticklabels(labels)
-    ax.set_title(f"Radar Chart: {track_name}")
-    st.pyplot(fig)
+    fig = px.line_polar(
+        r=z_scores,
+        theta=labels,
+        line_close=True,
+        title=f"🎯 Mood Breakdown: {track_name} 💫",
+    )
+    fig.update_traces(fill='toself', line_color="#FF4B4B", opacity=0.8)
+    fig.update_layout(polar=dict(radialaxis=dict(visible=True, range=[-2, 2])), showlegend=False)
+    st.plotly_chart(fig, use_container_width=True)
 
-plot_radar(selected_track)
+plot_radar_interactive(selected_track)
 
 # ================== Fun Visual ==================
 st.subheader("🎉 Enjoy the Vibes!")
 st.image("https://media.giphy.com/media/xT0xeJpnrWC4XWblEk/giphy.gif", caption="You're vibing with Spotify Moods 🎶", use_column_width=True)
 
 # ================== Mood Clustering ==================
-st.subheader("🔍 Mood Clusters (PCA + KMeans)")
+st.subheader("🧠 Mood Clusters Explained (PCA + KMeans)")
+st.markdown("Each dot is a song. We've grouped similar moods using AI. Colors = Vibes! 🎨")
 features = ['valence', 'energy', 'danceability', 'acousticness']
 X = data_1m[features].dropna()
 scaler = StandardScaler()
@@ -124,12 +113,17 @@ mood_labels = {
 data_1m['Cluster'] = clusters
 data_1m['Mood'] = data_1m['Cluster'].map(mood_labels)
 
-fig, ax = plt.subplots(figsize=(10, 6))
-sns.scatterplot(x=X_pca[:, 0], y=X_pca[:, 1], hue=data_1m['Mood'], palette='Set2', alpha=0.6, ax=ax)
-ax.set_title("🌟 Mood Clusters (PCA + KMeans)")
-ax.set_xlabel("PCA 1")
-ax.set_ylabel("PCA 2")
-st.pyplot(fig)
+fig = px.scatter(
+    x=X_pca[:, 0],
+    y=X_pca[:, 1],
+    color=data_1m['Mood'],
+    labels={'x': 'PCA 1', 'y': 'PCA 2'},
+    title="🧠 Mood Clusters (AI-generated) 🎨",
+    opacity=0.7,
+    width=1000
+)
+fig.update_traces(marker=dict(size=5))
+st.plotly_chart(fig, use_container_width=True)
 
 # ================== Mood Map (Valence vs Energy) ==================
 st.subheader("🎨 Mood Map: Valence vs Energy by Genre (Interactive)")
@@ -142,6 +136,7 @@ try:
         hover_data=["artists"],
         title="🎨 Mood Map: Valence vs Energy by Genre",
     )
+    st.image("https://media.giphy.com/media/l0MYAflMmG3QvNfIA/giphy.gif", width=150)
     st.plotly_chart(fig, use_container_width=True)
 except Exception as e:
     st.warning("Could not load Plotly chart. Showing fallback.")
@@ -155,7 +150,7 @@ except Exception as e:
     except Exception as fallback_error:
         st.error(f"Both Plotly and Matplotlib failed. Error: {fallback_error}")
 
-# =================== Predicting Popularity ===================
+# ================== Predicting Popularity ==================
 st.subheader("🔮 Predicting Popularity (ML Model)")
 try:
     X_pop = data_1m[features].dropna()
@@ -170,9 +165,7 @@ try:
 
     st.success(f"🎯 Popularity Prediction RMSE: {rmse:.2f}")
 
-    # Live prediction demo
     st.subheader("🎯 Popularity Prediction Demo")
-    st.markdown("Adjust sliders below to simulate a track's mood:")
     valence = st.slider("Valence (Happiness)", 0.0, 1.0, 0.5)
     energy = st.slider("Energy", 0.0, 1.0, 0.5)
     danceability = st.slider("Danceability", 0.0, 1.0, 0.5)
@@ -181,38 +174,42 @@ try:
     prediction = model.predict(sample_input)[0]
     st.success(f"🎷 Predicted Popularity: **{prediction:.2f}**")
 
+    if prediction > 80:
+        st.balloons()
+    elif prediction < 30:
+        st.snow()
+
 except Exception as e:
     st.error(f"Error in popularity prediction: {e}")
-
 
 # ================== Top 20 Streamed Songs of 2024 ==================
 st.subheader("🔥 Top 20 Streamed Songs of 2024")
 
-top_20 = data_2024.sort_values("Spotify Streams", ascending=False).head(20)
-
-fig = px.bar(
-    top_20,
-    x="Spotify Streams",
-    y="Track",
-    color="Artist",
-    orientation="h",
-    title="🔥 Top 20 Most Streamed Songs of 2024",
-    text="Spotify Streams",
-)
-
-fig.update_layout(yaxis={'categoryorder': 'total ascending'})
-st.plotly_chart(fig, use_container_width=True)
+try:
+    top_20 = data_2024.sort_values("Spotify Streams", ascending=False).head(20)
+    fig = px.bar(
+        top_20,
+        x="Spotify Streams",
+        y="Track",
+        color="Artist",
+        orientation="h",
+        title="🔥 Top 20 Most Streamed Songs of 2024",
+        text="Spotify Streams",
+    )
+    fig.update_layout(yaxis={'categoryorder': 'total ascending'})
+    st.plotly_chart(fig, use_container_width=True)
+except Exception as e:
+    st.error(f"Couldn't load top 20 chart: {e}")
 
 # ================== Smart Mood Recommender ==================
 st.subheader("🧠 Smart Mood Recommender")
 
 col1, col2 = st.columns(2)
 with col1:
-    fav_genre = st.selectbox("🎧 Select your favorite genre:", sorted(data['genres'].dropna().unique()))
+    fav_genre = st.selectbox("🎧 Select your favorite genre:", genres)
 with col2:
     mood_pick = st.select_slider("🎭 Pick your mood preference:", options=["Chill", "Sad", "Energetic", "Happy", "Mellow"])
 
-# Define mood filter ranges
 mood_filters = {
     "Chill": (0.2, 0.5),
     "Sad": (0.0, 0.4),
@@ -223,7 +220,6 @@ mood_filters = {
 
 val_min, val_max = mood_filters[mood_pick]
 
-# Use `data` here instead of data_1m
 recommendations = data[
     (data['genres'] == fav_genre) &
     (data['valence'].between(val_min, val_max))
@@ -236,6 +232,14 @@ if not recommendations.empty:
 else:
     st.info("🙁 No matching songs found. Try adjusting your mood or genre.")
 
+# ================== Surprise Me Button ==================
+if st.button("🎲 Surprise Me with a Track!"):
+    surprise = data_1m.sample(1).iloc[0]
+    st.info(f"🎵 Track: **{surprise['track_name']}** by *{surprise['artists']}* | Genre: {surprise['genres']} | Popularity: {surprise['popularity']}")
+    if surprise['popularity'] > 80:
+        st.balloons()
+    elif surprise['popularity'] < 30:
+        st.snow()
 
 # ================== Theme Setup Instructions ==================
 with st.expander("🎨 How to Apply Streamlit Theme"):

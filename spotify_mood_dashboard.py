@@ -112,7 +112,8 @@ with st.spinner("Loading data..."):
     if language_dfs:
         regional_data = pd.concat(language_dfs, ignore_index=True)
         data_1m = pd.concat([data_1m, regional_data], ignore_index=True, sort=False)
-        st.sidebar.caption(f"🌍 Loaded {regional_data.shape[0]} regional songs across {len(available_languages)} languages.")
+        st.sidebar.caption(f"🌍 Loaded {regional_data.shape[0]} regional songs across all languages.")
+
 
 
 # ===================== 🔧 Preprocessing =====================

@@ -414,10 +414,6 @@ with main_tab:
 
         st.plotly_chart(fig_mood_map, use_container_width=True)
 
-    with st.expander("📊 Cluster Distribution Breakdown"):
-        mood_counts = cleaned_data['Mood'].value_counts().reset_index()
-        mood_counts.columns = ['Mood', 'count']
-        st.dataframe(mood_counts)
 
     # ===================== 7. Popularity Prediction Sliders =====================
     st.subheader("🎯 Popularity Prediction Demo")
@@ -474,7 +470,7 @@ with main_tab:
         """)
 
 
-# ===================== 📊 Data Insights Tab =====================
+# ===================== 📈 Mood & Language Analysis Tab =====================
 with analysis_tab:
     st.title("📊 Technical Data Analysis")
     st.markdown("Explore deeper audio feature relationships, artists, cultural patterns, and playlist characteristics.")
@@ -515,12 +511,54 @@ with analysis_tab:
     fig_compare = px.box(compare_data, x='language', y=compare_feature, points="all", title=f"{compare_feature} Comparison by Language")
     st.plotly_chart(fig_compare, use_container_width=True)
 
-    # === 5. Lyrics Sentiment Analysis (Optional Placeholder) ===
+    # === 5. Mood Distribution Bar Chart ===
+    st.subheader("📊 Mood Distribution Bar Chart")
+    if 'Mood' in cleaned_data.columns:
+        mood_distribution = cleaned_data['Mood'].value_counts().reset_index()
+        mood_distribution.columns = ['Mood', 'Count']
+        fig_mood_dist = px.bar(mood_distribution, x='Count', y='Mood', orientation='h', color='Mood', title="🎭 Mood Distribution (All Songs)")
+        st.plotly_chart(fig_mood_dist, use_container_width=True)
+
+    # === 6. Mood Map Language Filter ===
+    st.subheader("🎨 Filter Mood Map by Language")
+    mood_langs = sorted(cleaned_data['language'].dropna().unique())
+    selected_mood_lang = st.selectbox("🌐 Mood Map Language", ["All"] + mood_langs)
+
+    mood_map_data = cleaned_data.copy()
+    if selected_mood_lang != "All":
+        mood_map_data = mood_map_data[mood_map_data['language'] == selected_mood_lang]
+
+    if 'Mood' in mood_map_data.columns:
+        mood_map_data = mood_map_data[
+            (mood_map_data['valence'] > 0.05) &
+            (mood_map_data['energy'] > 0.05) &
+            (mood_map_data['Mood'].notna())
+        ][['valence', 'energy', 'Mood', 'track_name', 'artist_name']]
+
+        if len(mood_map_data) > 1000:
+            mood_map_data = mood_map_data.sample(n=1000, random_state=42)
+
+        fig_filtered_mood = px.scatter(
+            data_frame=mood_map_data,
+            x="valence",
+            y="energy",
+            color="Mood",
+            hover_data=["artist_name", "track_name"],
+            title=f"🎨 Mood Map by Language: {selected_mood_lang if selected_mood_lang != 'All' else 'All Languages'}",
+            opacity=0.6
+        )
+        fig_filtered_mood.update_traces(marker=dict(size=6))
+        st.plotly_chart(fig_filtered_mood, use_container_width=True)
+
+    # === 7. Mood-based Song Generator ===
+    st.subheader("🎲 Generate Song by Mood")
+    unique_moods = cleaned_data['Mood'].dropna().unique()
+    selected_mood = st.selectbox("🎭 Pick a Mood", unique_moods)
+    if st.button("🎧 Show Me a Song!"):
+        song = cleaned_data[cleaned_data['Mood'] == selected_mood].sample(1).iloc[0]
+        st.markdown(f"**🎶 {song['track_name']}** by *{song['artist_name']}*")
+
+    # === 8. Lyrics Sentiment Placeholder ===
     st.subheader("🧠 Lyrics Sentiment Analysis (Optional)")
     st.markdown("If lyrics data is added in future, we can extract sentiment scores and compare them by genre, artist, or language.")
     st.info("📌 Currently not implemented — you can scrape lyrics from Genius or use NLP APIs like TextBlob or VADER.")
-
-    # (Add more technical insights here later: artist stats, comparisons, etc.)
-
-
-

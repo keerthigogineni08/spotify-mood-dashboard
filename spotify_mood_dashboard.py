@@ -30,6 +30,60 @@ with st.spinner("Loading data..."):
         data_1m = pd.read_csv("data/spotify_data_sample.csv")
         st.sidebar.warning("⚠️ Using sample dataset (10k tracks) for demo")
 
+    # Load and preprocess regional CSVs
+    language_dfs = []
+    language_sources = {
+        "Assamese": "data/archive/Assamese_songs.csv",
+        "Bengali": "data/archive/Bengali_songs.csv",
+        "Bhojpuri": "data/archive/Bhojpuri_songs.csv",
+        "Gujarati": "data/archive/Gujarati_songs.csv",
+        "Haryanvi": "data/archive/Haryanvi_songs.csv",
+        "Hindi": "data/archive/Hindi_songs.csv",
+        "Kannada": "data/archive/Kannada_songs.csv",
+        "Malayalam": "data/archive/Malayalam_songs.csv",
+        "Marathi": "data/archive/Marathi_songs.csv",
+        "Odia": "data/archive/Odia_songs.csv",
+        "Old": "data/archive/Old_songs.csv",
+        "Punjabi": "data/archive/Punjabi_songs.csv",
+        "Rajasthani": "data/archive/Rajasthani_songs.csv",
+        "Tamil": "data/archive/Tamil_songs.csv",
+        "Telugu": "data/archive/Telugu_songs.csv",
+        "Urdu": "data/archive/Urdu_songs.csv"
+    }
+    for lang, path in language_sources.items():
+        if os.path.exists(path):
+            df = pd.read_csv(path)
+            df['track_name'] = df['song_name']
+            df['artist_name'] = df['singer']
+            df['valence'] = df['Valence']
+            df['duration_ms'] = df['duration'].apply(lambda x: int(x.split(':')[0]) * 60000 + int(x.split(':')[1]) * 1000 if isinstance(x, str) and ':' in x else x)
+            df['language'] = lang
+            df = df.rename(columns=str.lower)
+            df.drop(columns=['song_name', 'singer', 'Valence', 'duration'], inplace=True, errors='ignore')
+            language_dfs.append(df)
+
+    # Load and clean the Telugu XLSX file
+    telugu_xlsx_path = "data/Spotify Telugu.xlsx"
+    if os.path.exists(telugu_xlsx_path):
+        telugu_xlsx = pd.read_excel(telugu_xlsx_path)
+        telugu_xlsx = telugu_xlsx.rename(columns={
+            'Name': 'track_name',
+            'Artists': 'artist_name',
+            'Valence': 'valence',
+            'Intrumentalness': 'instrumentalness',
+            'Duration': 'duration_ms'
+        })
+        telugu_xlsx.columns = [col.lower() for col in telugu_xlsx.columns]
+        telugu_xlsx['language'] = 'Telugu'
+        language_dfs.append(telugu_xlsx)
+
+    # Combine all regional data
+    if language_dfs:
+        regional_data = pd.concat(language_dfs, ignore_index=True)
+        data_1m = pd.concat([data_1m, regional_data], ignore_index=True, sort=False)
+
+
+
 # ===================== 🔧 Preprocessing =====================
 # Clean 'data' (the file with genres)
 data['genres'] = data['genres'].apply(lambda x: eval(x) if isinstance(x, str) else [])
@@ -53,6 +107,13 @@ if 'genres' not in data_1m.columns:
     data_1m = data_1m.explode('genres')
 
 st.title("🎵 Spotify Mood Dashboard")
+
+# ===================== Language Filter =====================
+available_languages = data_1m['language'].dropna().unique() if 'language' in data_1m.columns else []
+if len(available_languages) > 0:
+    selected_language = st.sidebar.selectbox("🌍 Filter by Language", ["All"] + sorted(available_languages))
+    if selected_language != "All":
+        data_1m = data_1m[data_1m['language'] == selected_language]
 
 # ===================== 🔍 Sidebar Filters =====================
 st.sidebar.header("Track Explorer")

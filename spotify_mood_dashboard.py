@@ -112,17 +112,7 @@ with st.spinner("Loading data..."):
     if language_dfs:
         regional_data = pd.concat(language_dfs, ignore_index=True)
         data_1m = pd.concat([data_1m, regional_data], ignore_index=True, sort=False)
-        st.sidebar.write("Regional songs added:", regional_data.shape[0] if 'regional_data' in locals() else 0)
-        # ✅ DEBUG: check if regional songs were added
-        st.sidebar.write("✅ Regional songs added:", regional_data.shape[0])
-        st.sidebar.write("✅ Columns in data_1m:", data_1m.columns.tolist())
-        if 'language' in data_1m.columns:
-            st.sidebar.write("🌍 Languages found in data_1m:", data_1m['language'].dropna().unique())
-        else:
-            st.sidebar.warning("⚠️ No 'language' column found in data_1m!")
-
-
-
+        st.sidebar.caption(f"🌍 Loaded {regional_data.shape[0]} regional songs across {len(available_languages)} languages.")
 
 
 # ===================== 🔧 Preprocessing =====================

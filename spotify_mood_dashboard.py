@@ -11,13 +11,24 @@ from sklearn.cluster import KMeans
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
-from pandas.io.parsers import ParserBase
 from math import pi
 import random
 
 # Set page layout
 st.set_page_config(layout="wide", page_title="Spotify Mood Dashboard", page_icon="🎵")
 sns.set(style="whitegrid")
+
+def deduplicate_columns(columns):
+    seen = {}
+    new_cols = []
+    for col in columns:
+        if col not in seen:
+            seen[col] = 1
+            new_cols.append(col)
+        else:
+            seen[col] += 1
+            new_cols.append(f"{col}.{seen[col]}")
+    return new_cols
 
 # Load Data with spinner
 with st.spinner("Loading data..."):
@@ -76,7 +87,8 @@ with st.spinner("Loading data..."):
 
             # Make column names lowercase and deduplicate if needed
             df.columns = [col.lower() for col in df.columns]
-            df.columns = ParserBase({'names': df.columns})._maybe_dedup_names(df.columns)
+            df.columns = deduplicate_columns(df.columns)
+
 
             # Append clean df to list
             language_dfs.append(df)

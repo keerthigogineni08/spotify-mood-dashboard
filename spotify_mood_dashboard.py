@@ -360,6 +360,13 @@ with main_tab:
 
         try:
             plot_data = filtered_data.sample(n=1000, random_state=42) if len(filtered_data) > 1000 else filtered_data
+            plot_data = cleaned_data[
+                (cleaned_data['valence'] > 0) &
+                (cleaned_data['energy'] > 0)
+            ].copy()
+
+            if len(plot_data) > 1000:
+                plot_data = plot_data.sample(n=1000, random_state=42)
             fig_mood_map = px.scatter(
                 data_frame=plot_data,
                 x="valence",

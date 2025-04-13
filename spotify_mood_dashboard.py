@@ -14,6 +14,7 @@ from sklearn.cluster import KMeans
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
+from urllib.parse import quote
 from math import pi
 import random
 
@@ -364,6 +365,27 @@ st.markdown(f"🎶 You're vibing with **{mood}** mood today!")
 
 # ===================== 🔮 Popularity Prediction =====================
 st.subheader("🔮 Predicting Popularity (ML Model)")
+
+def search_spotify_track(track_name, artist_name=None):
+    token = get_spotify_token()
+    if not token:
+        return None, None
+
+    headers = {"Authorization": f"Bearer {token}"}
+    query = f"track:{track_name}"
+    if artist_name:
+        query += f" artist:{artist_name}"
+    query = quote(query)
+
+    url = f"https://api.spotify.com/v1/search?q={query}&type=track&limit=1"
+    response = requests.get(url, headers=headers)
+
+    if response.status_code == 200:
+        items = response.json().get("tracks", {}).get("items", [])
+        if items:
+            return items[0]["id"], items[0]["popularity"]
+    return None, None
+
 try:
     X_pop = data_1m[features].dropna()
     y_pop = data_1m.loc[X_pop.index, 'popularity']
@@ -442,29 +464,29 @@ recommendations = data_1m[
     (data_1m['valence'].between(val_min, val_max))
 ].sort_values("popularity", ascending=False).head(5)
 
-if not recommendations.empty:
-    st.success("🎯 Based on your mood and genre, here are some recommendations:")
-    for i, row in recommendations.iterrows():
-        st.markdown(f"**{row['track_name']}** by *{row['artist_name']}* — Popularity: {row['popularity']}")
-else:
+if recommendations.empty:
     st.info("🙁 No matching songs found. Try adjusting your mood or genre.")
 
 spotify_base = "https://open.spotify.com/track/"
 
 for i, row in recommendations.iterrows():
-    pop_display = row['popularity'] if pd.notnull(row['popularity']) else "Unknown"
+    track_name = row["track_name"]
+    artist_name = row.get("artist_name")
+    
+    # Fetch from API if track_id is missing
+    track_id = row.get("track_id") if "track_id" in row and pd.notnull(row["track_id"]) else None
+    spotify_pop = row.get("popularity") if pd.notnull(row.get("popularity")) else None
 
-    track_id = row.get("track_id")
+    if not track_id:
+        track_id, spotify_pop = search_spotify_track(track_name, artist_name)
 
-    # If track_id is missing, use Spotify API to search
-    if pd.isnull(track_id):
-       track_id = search_spotify_track(row["track_name"], row.get("artist_name"))
+    pop_display = spotify_pop if spotify_pop is not None else "Unknown"
 
     if track_id:
         spotify_link = f"https://open.spotify.com/track/{track_id}"
-        st.markdown(f"**{row['track_name']}** by *{row['artist_name']}* — Popularity: {pop_display} [🎧 Open on Spotify]({spotify_link})")
+        st.markdown(f"**{track_name}** by *{artist_name}* — Popularity: {pop_display} [🎧 Open on Spotify]({spotify_link})")
     else:
-        st.markdown(f"**{row['track_name']}** by *{row['artist_name']}* — Popularity: {pop_display}")
+        st.markdown(f"**{track_name}** by *{artist_name}* — Popularity: {pop_display}")
 
 # ===================== 🎲 Surprise Me =====================
 if st.button("🎲 Surprise Me with a Track!"):

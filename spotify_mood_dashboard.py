@@ -364,7 +364,8 @@ with main_tab:
         # Safely filter cleaned_data for valid rows with valence and energy
         plot_data = cleaned_data[
             (cleaned_data['valence'].notna()) &
-            (cleaned_data['energy'].notna())
+            (cleaned_data['energy'].notna()) &
+            (cleaned_data['Mood'].notna())
         ][['valence', 'energy', 'Mood', 'track_name', 'artist_name']]
 
         if len(plot_data) > 1000:
@@ -394,7 +395,6 @@ with main_tab:
                 st.error("No data available for Mood Map plotting.")
         except Exception as fallback_error:
             st.error(f"Both Plotly and Matplotlib failed. Error: {fallback_error}")
-
 
     # ===================== 7. Popularity Prediction Sliders =====================
     st.subheader("🎯 Popularity Prediction Demo")

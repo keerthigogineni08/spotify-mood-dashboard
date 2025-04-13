@@ -369,6 +369,10 @@ with main_tab:
         with st.expander("ℹ️ What are mood clusters?"):
             st.markdown("We used PCA + KMeans to group songs with similar moods. This helps us identify types of songs based on feel, not just genre.")
 
+        with st.expander("📊 Cluster Distribution Breakdown"):
+            st.dataframe(filtered_data['Mood'].value_counts().reset_index().rename(columns={'index': 'Mood', 'Mood': 'Count'}))
+
+
     # ===================== 6. Mood Map (Valence vs Energy) =====================
     st.subheader("🎨 Mood Map: Valence vs Energy by Mood (Interactive)")
     st.markdown("This chart maps songs by **happiness (valence)** vs **intensity (energy)**. Each dot is a song, color = mood 🎨")
@@ -396,7 +400,15 @@ with main_tab:
             color="Mood",
             hover_data=["artist_name", "track_name"],
             title="🎨 Mood Map: Valence vs Energy by Mood",
+            opacity=0.6,  # reduces overplotting
         )
+
+        fig_mood_map.update_traces(marker=dict(size=6))  # makes dots smaller
+        fig_mood_map.update_layout(
+            xaxis=dict(range=[0, 1], title="Valence (Happiness)"),
+            yaxis=dict(range=[0, 1], title="Energy (Intensity)")
+        )
+
         st.plotly_chart(fig_mood_map, use_container_width=True)
 
 

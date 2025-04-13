@@ -307,66 +307,69 @@ with main_tab:
 
 
     # ===================== 5. Mood Clusters (PCA + KMeans) =====================
-        st.subheader("🧠 Mood Clusters Explained (PCA + KMeans)")
-        st.markdown("Each dot is a song. We've grouped similar moods using AI. Colors = Vibes! 🎨")
+    st.subheader("🧠 Mood Clusters Explained (PCA + KMeans)")
+    st.markdown("Each dot is a song. We've grouped similar moods using AI. Colors = Vibes! 🎨")
 
-        X_cluster = cleaned_data[['valence', 'energy', 'danceability', 'acousticness']].dropna()
-        if X_cluster.empty:
-            st.warning("Not enough data to cluster moods. Try selecting more genres or resetting filters.")
-        else:
-            filtered_data = cleaned_data.loc[X_cluster.index].copy()
+    X_cluster = cleaned_data[['valence', 'energy', 'danceability', 'acousticness']].dropna()
+    if X_cluster.empty:
+        st.warning("Not enough data to cluster moods. Try selecting more genres or resetting filters.")
+    else:
+        filtered_data = cleaned_data.loc[X_cluster.index].copy()
 
-            scaler = StandardScaler()
-            X_scaled = scaler.fit_transform(X_cluster)
+        scaler = StandardScaler()
+        X_scaled = scaler.fit_transform(X_cluster)
 
-            # Optional fix before clustering
-            X_scaled = np.clip(X_scaled, -5, 5)
+        # Optional fix before clustering
+        X_scaled = np.clip(X_scaled, -5, 5)
 
-            pca = PCA(n_components=2)
-            X_pca = pca.fit_transform(X_scaled)
+        pca = PCA(n_components=2)
+        X_pca = pca.fit_transform(X_scaled)
 
-            kmeans = KMeans(n_clusters=5, random_state=42, n_init='auto')
-            clusters = kmeans.fit_predict(X_pca)
+        kmeans = KMeans(n_clusters=5, random_state=42, n_init='auto')
+        clusters = kmeans.fit_predict(X_pca)
 
-            mood_labels = {
-                0: "Chill & Mellow",
-                1: "Party Hype",
-                2: "Sad Bops",
-                3: "Confident Bangers",
-                4: "Acoustic Vibes"
-            }
+        mood_labels = {
+            0: "Chill & Mellow",
+            1: "Party Hype",
+            2: "Sad Bops",
+            3: "Confident Bangers",
+            4: "Acoustic Vibes"
+        }
 
-            filtered_data['Cluster'] = clusters
-            filtered_data['Mood'] = filtered_data['Cluster'].map(mood_labels)
+        filtered_data['Cluster'] = clusters
+        filtered_data['Mood'] = filtered_data['Cluster'].map(mood_labels)
 
-            fig_clusters = px.scatter(
-                x=X_pca[:, 0],
-                y=X_pca[:, 1],
-                color=filtered_data['Mood'],
-                labels={'x': 'PCA 1', 'y': 'PCA 2'},
-                title="🧠 Mood Clusters (AI-generated) 🎨",
-                opacity=0.7,
-                width=1000
-            )
-            fig_clusters.update_traces(marker=dict(size=5))
-            st.plotly_chart(fig_clusters, use_container_width=True)
+        fig_clusters = px.scatter(
+            x=X_pca[:, 0],
+            y=X_pca[:, 1],
+            color=filtered_data['Mood'],
+            labels={'x': 'PCA 1', 'y': 'PCA 2'},
+            title="🧠 Mood Clusters (AI-generated) 🎨",
+            opacity=0.7,
+            width=1000
+        )
+        fig_clusters.update_traces(marker=dict(size=5))
+        st.plotly_chart(fig_clusters, use_container_width=True)
 
-            with st.expander("ℹ️ What are mood clusters?"):
-                st.markdown("We used PCA + KMeans to group songs with similar moods. This helps us identify types of songs based on feel, not just genre.")
+        with st.expander("ℹ️ What are mood clusters?"):
+            st.markdown("We used PCA + KMeans to group songs with similar moods. This helps us identify types of songs based on feel, not just genre.")
 
         # ===================== 6. Mood Map (Valence vs Energy) =====================
         st.subheader("🎨 Mood Map: Valence vs Energy by Mood (Interactive)")
         st.markdown("This chart maps songs by **happiness (valence)** vs **intensity (energy)**. Each dot is a song, color = mood 🎨")
 
         try:
-            plot_data = filtered_data.sample(n=1000, random_state=42) if len(filtered_data) > 1000 else filtered_data
+            # Filter only rows with valid values and keep only needed columns
             plot_data = cleaned_data[
                 (cleaned_data['valence'] > 0) &
                 (cleaned_data['energy'] > 0)
-            ].copy()
+            ][['valence', 'energy', 'Mood', 'track_name', 'artist_name']].dropna()
 
+            # Limit sample size to prevent memory issues
             if len(plot_data) > 1000:
                 plot_data = plot_data.sample(n=1000, random_state=42)
+
+            # Interactive scatter plot
             fig_mood_map = px.scatter(
                 data_frame=plot_data,
                 x="valence",
@@ -376,17 +379,19 @@ with main_tab:
                 title="🎨 Mood Map: Valence vs Energy by Mood",
             )
             st.plotly_chart(fig_mood_map, use_container_width=True)
+
         except Exception as e:
             st.warning("Could not load Plotly chart. Showing fallback.")
             try:
                 fig_fallback, ax = plt.subplots(figsize=(10, 6))
-                sns.scatterplot(data=filtered_data, x="valence", y="energy", hue="Mood", alpha=0.6, ax=ax, legend=False)
+                sns.scatterplot(data=plot_data, x="valence", y="energy", hue="Mood", alpha=0.6, ax=ax, legend=False)
                 ax.set_title("Mood Map")
                 ax.set_xlabel("Valence")
                 ax.set_ylabel("Energy")
                 st.pyplot(fig_fallback)
             except Exception as fallback_error:
                 st.error(f"Both Plotly and Matplotlib failed. Error: {fallback_error}")
+
 
     # ===================== 7. Popularity Prediction Sliders =====================
     st.subheader("🎯 Popularity Prediction Demo")

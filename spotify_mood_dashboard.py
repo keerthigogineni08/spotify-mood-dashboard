@@ -17,7 +17,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
 from urllib.parse import quote
 
-# Set up Streamlit page config
+# Setting up Streamlit page config
 st.set_page_config(layout="wide", page_title="Spotify Mood Dashboard", page_icon="🎵")
 sns.set(style="whitegrid")
 
@@ -167,11 +167,11 @@ if 'genres' not in data_main.columns:
 numeric_cols = ['valence', 'energy', 'danceability', 'acousticness']
 cleaned_data = data_main.dropna(subset=numeric_cols + ['track_name', 'artist_name'])
 
-# Filter out invalid values
+# Filtering out invalid values
 for col in numeric_cols:
     cleaned_data = cleaned_data[cleaned_data[col] > 0]
 
-# Keep only relevant columns
+# Only keep relevant columns
 keep_cols = ['track_name', 'artist_name', 'language', 'genres'] + numeric_cols
 cleaned_data = cleaned_data[keep_cols].copy()
 
@@ -345,14 +345,13 @@ with main_tab:
         filtered_data['Cluster'] = clusters
         filtered_data['Mood'] = filtered_data['Cluster'].map(mood_labels)
 
-        # Only merge if Mood not already present
+        # Merge only if Mood is not already present
         if 'Mood' not in cleaned_data.columns:
             cleaned_data = cleaned_data.merge(
                 filtered_data[['track_name', 'artist_name', 'Mood']],
                 on=['track_name', 'artist_name'],
                 how='left'
             )
-
 
         fig_clusters = px.scatter(
             x=X_pca[:, 0],
@@ -372,7 +371,6 @@ with main_tab:
         with st.expander("📊 Cluster Distribution Breakdown"):
             st.dataframe(filtered_data['Mood'].value_counts().reset_index().rename(columns={'index': 'Mood', 'Mood': 'Count'}))
 
-
     # ===================== 6. Mood Map (Valence vs Energy) =====================
     st.subheader("🎨 Mood Map: Valence vs Energy by Mood (Interactive)")
     st.markdown("This chart maps songs by **happiness (valence)** vs **intensity (energy)**. Each dot is a song, color = mood 🎨")
@@ -387,15 +385,14 @@ with main_tab:
             (cleaned_data['Mood'].notna())
         ][['valence', 'energy', 'Mood', 'track_name', 'artist_name']]
 
-        # Clip outliers for visual clarity
+        # Clip the outliers for visual clarity
         plot_data['valence'] = plot_data['valence'].clip(0.05, 0.95)
         plot_data['energy'] = plot_data['energy'].clip(0.05, 0.95)
 
-        # Sample for performance
+        # Sample it for performance
         if len(plot_data) > 1000:
             plot_data = plot_data.sample(n=1000, random_state=42)
 
-        # Plot the scatter
         fig_mood_map = px.scatter(
             data_frame=plot_data,
             x="valence",
@@ -413,7 +410,6 @@ with main_tab:
         )
 
         st.plotly_chart(fig_mood_map, use_container_width=True)
-
 
     # ===================== 7. Popularity Prediction Sliders =====================
     st.subheader("🎯 Popularity Prediction Demo")

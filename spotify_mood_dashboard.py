@@ -339,6 +339,13 @@ with main_tab:
         filtered_data['Cluster'] = clusters
         filtered_data['Mood'] = filtered_data['Cluster'].map(mood_labels)
 
+        # Make sure Mood exists in cleaned_data for Mood Map plotting
+        cleaned_data = cleaned_data.merge(
+            filtered_data[['track_name', 'artist_name', 'Mood']],
+            on=['track_name', 'artist_name'],
+            how='left'
+        )
+
         fig_clusters = px.scatter(
             x=X_pca[:, 0],
             y=X_pca[:, 1],

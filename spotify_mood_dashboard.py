@@ -113,12 +113,11 @@ with st.spinner("Loading data..."):
         regional_data = pd.concat(language_dfs, ignore_index=True)
 
         # 👉 Add 'English' tag to main dataset so it's not left out in filters
-        if 'language' not in data_1m.columns:
-            data_1m['language'] = 'English'
-            
+        if 'language' in data_1m.columns:
+            data_1m['language'] = data_1m['language'].fillna("English")
+
         data_1m = pd.concat([data_1m, regional_data], ignore_index=True, sort=False)
         st.sidebar.caption(f"🌍 Loaded {regional_data.shape[0]} regional songs across all languages.")
-
 
 
 # ===================== 🔧 Preprocessing =====================

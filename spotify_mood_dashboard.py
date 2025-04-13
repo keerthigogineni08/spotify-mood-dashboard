@@ -380,19 +380,22 @@ with main_tab:
     if 'Mood' not in cleaned_data.columns:
         st.warning("⛔️ No mood clusters found. Please generate them above (PCA + KMeans).")
     else:
+        # Filter songs with valid valence, energy, and mood
         plot_data = cleaned_data[
             (cleaned_data['valence'] > 0.05) &
             (cleaned_data['energy'] > 0.05) &
             (cleaned_data['Mood'].notna())
         ][['valence', 'energy', 'Mood', 'track_name', 'artist_name']]
 
-        # Optional: clip values to clean up visuals
+        # Clip outliers for visual clarity
         plot_data['valence'] = plot_data['valence'].clip(0.05, 0.95)
         plot_data['energy'] = plot_data['energy'].clip(0.05, 0.95)
 
+        # Sample for performance
         if len(plot_data) > 1000:
             plot_data = plot_data.sample(n=1000, random_state=42)
 
+        # Plot the scatter
         fig_mood_map = px.scatter(
             data_frame=plot_data,
             x="valence",
@@ -400,10 +403,10 @@ with main_tab:
             color="Mood",
             hover_data=["artist_name", "track_name"],
             title="🎨 Mood Map: Valence vs Energy by Mood",
-            opacity=0.6,  # reduces overplotting
+            opacity=0.6,
         )
 
-        fig_mood_map.update_traces(marker=dict(size=6))  # makes dots smaller
+        fig_mood_map.update_traces(marker=dict(size=6))
         fig_mood_map.update_layout(
             xaxis=dict(range=[0, 1], title="Valence (Happiness)"),
             yaxis=dict(range=[0, 1], title="Energy (Intensity)")
@@ -411,6 +414,10 @@ with main_tab:
 
         st.plotly_chart(fig_mood_map, use_container_width=True)
 
+    with st.expander("📊 Cluster Distribution Breakdown"):
+        mood_counts = cleaned_data['Mood'].value_counts().reset_index()
+        mood_counts.columns = ['Mood', 'count']
+        st.dataframe(mood_counts)
 
     # ===================== 7. Popularity Prediction Sliders =====================
     st.subheader("🎯 Popularity Prediction Demo")

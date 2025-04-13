@@ -368,12 +368,15 @@ with main_tab:
     plot_data = pd.DataFrame()
 
     try:
-        # Safely filter cleaned_data for valid rows with valence and energy
         plot_data = cleaned_data[
-            (cleaned_data['valence'].notna()) &
-            (cleaned_data['energy'].notna()) &
+            (cleaned_data['valence'] > 0.05) &
+            (cleaned_data['energy'] > 0.05) &
             (cleaned_data['Mood'].notna())
         ][['valence', 'energy', 'Mood', 'track_name', 'artist_name']]
+
+        # Optional: clip out extreme values to clean up plot visuals
+        plot_data['valence'] = plot_data['valence'].clip(0.05, 0.95)
+        plot_data['energy'] = plot_data['energy'].clip(0.05, 0.95)
 
         if len(plot_data) > 1000:
             plot_data = plot_data.sample(n=1000, random_state=42)

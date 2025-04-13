@@ -212,6 +212,9 @@ X = data_1m[features].dropna()
 if X.empty:
     st.warning("Not enough data to cluster moods. Try selecting more genres or resetting filters.")
 else:
+    # Filter matching rows
+    filtered_data = data_1m.loc[X.index].copy()
+
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(X)
 
@@ -229,13 +232,13 @@ else:
         4: "Acoustic Vibes"
     }
 
-    data_1m['Cluster'] = clusters
-    data_1m['Mood'] = data_1m['Cluster'].map(mood_labels)
+    filtered_data['Cluster'] = clusters
+    filtered_data['Mood'] = filtered_data['Cluster'].map(mood_labels)
 
     fig_clusters = px.scatter(
         x=X_pca[:, 0],
         y=X_pca[:, 1],
-        color=data_1m['Mood'],
+        color=filtered_data['Mood'],
         labels={'x': 'PCA 1', 'y': 'PCA 2'},
         title="🧠 Mood Clusters (AI-generated) 🎨",
         opacity=0.7,
@@ -249,6 +252,13 @@ else:
 
     st.markdown("## 🎨 AI Mood Clusters")
     st.caption("Songs grouped using AI based on sound similarity. Each color is a mood category like Chill, Sad Bops, or Hype.")
+
+    # Optional: merge moods back into full data_1m (so other features like "Surprise Me" and recommender work)
+    data_1m = data_1m.merge(
+        filtered_data[['track_name', 'artist_name', 'Mood', 'Cluster']],
+        on=['track_name', 'artist_name'],
+        how='left'
+    )
 
 # ===================== 🎨 Mood Map =====================
 st.subheader("🎨 Mood Map: Valence vs Energy by Mood (Interactive)")

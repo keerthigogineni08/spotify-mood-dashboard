@@ -143,6 +143,9 @@ with st.spinner("Loading and preprocessing datasets..."):
         data_main = pd.concat([data_main, regional_data], ignore_index=True, sort=False)
         st.sidebar.caption(f"🌍 Loaded {regional_data.shape[0]} regional songs across all languages.")
 
+    # Temporary empty fallback for cleaned_data to avoid crash
+    cleaned_data = pd.DataFrame(columns=['valence', 'energy', 'danceability', 'acousticness'])
+
 # ===================== 4. Clean & Merge Genre Info =====================
 data_genre['genres'] = data_genre['genres'].apply(lambda x: eval(x) if isinstance(x, str) else [])
 data_genre = data_genre.explode('genres')
@@ -159,6 +162,15 @@ if 'genres' not in data_main.columns:
     )
     data_main['genres'] = data_main['genres'].fillna("Unknown")
     data_main = data_main.explode('genres')
+
+# ===================== 5. Create cleaned_data for clustering, mood map, etc. =====================
+cleaned_data = data_main[
+    (data_main['valence'] > 0) &
+    (data_main['energy'] > 0) &
+    (data_main['danceability'] > 0) &
+    (data_main['acousticness'] > 0)
+].dropna(subset=['valence', 'energy', 'danceability', 'acousticness'])
+
 
 # ===================== MAIN DASHBOARD WITH TABS =====================
 main_tab, analysis_tab = st.tabs(["🎧 Mood Dashboard", "📊 Data Insights"])
@@ -237,7 +249,7 @@ with main_tab:
         model = RandomForestRegressor(n_estimators=100, random_state=42)
         model.fit(X_train, y_train)
         preds = model.predict(X_test)
-        rmse = mean_squared_error(y_test, preds, squared=False)
+        rmse = np.sqrt(mean_squared_error(y_test, preds))
         st.success(f"🎯 Model trained. RMSE: {rmse:.2f}")
     except Exception as e:
         st.error(f"Model training failed: {e}")

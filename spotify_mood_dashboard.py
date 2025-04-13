@@ -264,7 +264,7 @@ try:
         hover_data=["artist_name", "track_name"],
         title="🎨 Mood Map: Valence vs Energy by Mood",
     )
-    st.image("https://media.giphy.com/media/xT9IgzoKnwFNmISR8I/giphy.gif", width=150)
+    #st.image("https://media.giphy.com/media/xT9IgzoKnwFNmISR8I/giphy.gif", width=150)
     st.plotly_chart(fig_mood_map, use_container_width=True)
 except Exception as e:
     st.warning("Could not load Plotly chart. Showing fallback.")
@@ -310,6 +310,7 @@ try:
 
     if y_pop.isnull().any():
         st.warning("⚠️ Some songs are missing popularity scores. Popularity prediction skipped.")
+        model = None
     else:
         with st.spinner("Training model..."):
             X_train, X_test, y_train, y_test = train_test_split(X_pop, y_pop, test_size=0.2, random_state=42)
@@ -320,19 +321,21 @@ try:
 
         st.success(f"🎯 Popularity Prediction RMSE: {rmse:.2f}")
 
-    st.subheader("🎯 Popularity Prediction Demo")
-    valence = st.slider("Valence (Happiness)", 0.0, 1.0, 0.5)
-    energy = st.slider("Energy", 0.0, 1.0, 0.5)
-    danceability = st.slider("Danceability", 0.0, 1.0, 0.5)
-    acousticness = st.slider("Acousticness", 0.0, 1.0, 0.5)
-    sample_input = pd.DataFrame([[valence, energy, danceability, acousticness]], columns=features)
-    prediction = model.predict(sample_input)[0]
-    st.success(f"🎷 Predicted Popularity: **{prediction:.2f}**")
 
-    if prediction > 80:
-        st.balloons()
-    elif prediction < 30:
-        st.snow()
+    if model is not None:
+        st.subheader("🎯 Popularity Prediction Demo")
+        valence = st.slider("Valence (Happiness)", 0.0, 1.0, 0.5)
+        energy = st.slider("Energy", 0.0, 1.0, 0.5)
+        danceability = st.slider("Danceability", 0.0, 1.0, 0.5)
+        acousticness = st.slider("Acousticness", 0.0, 1.0, 0.5)
+        sample_input = pd.DataFrame([[valence, energy, danceability, acousticness]], columns=features)
+        prediction = model.predict(sample_input)[0]
+        st.success(f"🎷 Predicted Popularity: **{prediction:.2f}**")
+
+        if prediction > 80:
+            st.balloons()
+        elif prediction < 30:
+            st.snow()
 
 except Exception as e:
     st.error(f"Error in popularity prediction: {e}")
@@ -385,6 +388,18 @@ if not recommendations.empty:
         st.markdown(f"**{row['track_name']}** by *{row['artist_name']}* — Popularity: {row['popularity']}")
 else:
     st.info("🙁 No matching songs found. Try adjusting your mood or genre.")
+
+spotify_base = "https://open.spotify.com/track/"
+
+for i, row in recommendations.iterrows():
+    pop_display = row['popularity'] if pd.notnull(row['popularity']) else "Unknown"
+    if 'track_id' in row and pd.notnull(row['track_id']):
+        spotify_link = spotify_base + row['track_id']
+        st.markdown(f"**{row['track_name']}** by *{row['artist_name']}* — Popularity: {pop_display} [🎧 Open on Spotify]({spotify_link})")
+    else:
+        st.markdown(f"**{row['track_name']}** by *{row['artist_name']}* — Popularity: {pop_display}")
+
+
 
 # ===================== 🎲 Surprise Me =====================
 if st.button("🎲 Surprise Me with a Track!"):

@@ -54,7 +54,7 @@ with st.spinner("Loading data..."):
         if os.path.exists(path):
             df = pd.read_csv(path)
 
-            # Normalize and rename columns
+            # Rename common columns to match rest of dashboard
             df = df.rename(columns={
                 'song_name': 'track_name',
                 'singer': 'artist_name',
@@ -62,19 +62,22 @@ with st.spinner("Loading data..."):
                 'duration': 'duration_str'
             })
 
-            # Handle duration format (mm:ss -> ms)
+            # Convert mm:ss to milliseconds
             df['duration_ms'] = df['duration_str'].apply(
                 lambda x: int(x.split(':')[0]) * 60000 + int(x.split(':')[1]) * 1000
                 if isinstance(x, str) and ':' in x else None
             )
 
             df['language'] = lang
+
+            # Drop unnecessary or renamed columns
             df = df.drop(columns=['duration_str'], errors='ignore')
 
-            # Lowercase and deduplicate column names
-            df.columns = pd.io.parsers.ParserBase({'names': df.columns})._maybe_dedup_names(df.columns)
+            # Make column names lowercase and deduplicate if needed
             df.columns = [col.lower() for col in df.columns]
+            df.columns = ParserBase({'names': df.columns})._maybe_dedup_names(df.columns)
 
+            # Append clean df to list
             language_dfs.append(df)
 
     # Load and clean the Telugu XLSX file

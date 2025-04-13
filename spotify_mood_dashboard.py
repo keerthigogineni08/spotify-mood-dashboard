@@ -354,44 +354,43 @@ with main_tab:
         with st.expander("ℹ️ What are mood clusters?"):
             st.markdown("We used PCA + KMeans to group songs with similar moods. This helps us identify types of songs based on feel, not just genre.")
 
-        # ===================== 6. Mood Map (Valence vs Energy) =====================
-        st.subheader("🎨 Mood Map: Valence vs Energy by Mood (Interactive)")
-        st.markdown("This chart maps songs by **happiness (valence)** vs **intensity (energy)**. Each dot is a song, color = mood 🎨")
+    # ===================== 6. Mood Map (Valence vs Energy) =====================
+    st.subheader("🎨 Mood Map: Valence vs Energy by Mood (Interactive)")
+    st.markdown("This chart maps songs by **happiness (valence)** vs **intensity (energy)**. Each dot is a song, color = mood 🎨")
 
+    # Ensure plot_data is defined even if try fails
+    plot_data = pd.DataFrame()
+
+    try:
+        plot_data = cleaned_data[
+            (cleaned_data['valence'] > 0) &
+            (cleaned_data['energy'] > 0)
+        ][['valence', 'energy', 'Mood', 'track_name', 'artist_name']].dropna()
+
+        if len(plot_data) > 1000:
+            plot_data = plot_data.sample(n=1000, random_state=42)
+
+        fig_mood_map = px.scatter(
+            data_frame=plot_data,
+            x="valence",
+            y="energy",
+            color="Mood",
+            hover_data=["artist_name", "track_name"],
+            title="🎨 Mood Map: Valence vs Energy by Mood",
+        )
+        st.plotly_chart(fig_mood_map, use_container_width=True)
+
+    except Exception as e:
+        st.warning("Could not load Plotly chart. Showing fallback.")
         try:
-            # Filter only rows with valid values and keep only needed columns
-            plot_data = cleaned_data[
-                (cleaned_data['valence'] > 0) &
-                (cleaned_data['energy'] > 0)
-            ][['valence', 'energy', 'Mood', 'track_name', 'artist_name']].dropna()
-
-            # Limit sample size to prevent memory issues
-            if len(plot_data) > 1000:
-                plot_data = plot_data.sample(n=1000, random_state=42)
-
-            # Interactive scatter plot
-            fig_mood_map = px.scatter(
-                data_frame=plot_data,
-                x="valence",
-                y="energy",
-                color="Mood",
-                hover_data=["artist_name", "track_name"],
-                title="🎨 Mood Map: Valence vs Energy by Mood",
-            )
-            st.plotly_chart(fig_mood_map, use_container_width=True)
-
-        except Exception as e:
-            st.warning("Could not load Plotly chart. Showing fallback.")
-            try:
-                fig_fallback, ax = plt.subplots(figsize=(10, 6))
-                sns.scatterplot(data=plot_data, x="valence", y="energy", hue="Mood", alpha=0.6, ax=ax, legend=False)
-                ax.set_title("Mood Map")
-                ax.set_xlabel("Valence")
-                ax.set_ylabel("Energy")
-                st.pyplot(fig_fallback)
-            except Exception as fallback_error:
-                st.error(f"Both Plotly and Matplotlib failed. Error: {fallback_error}")
-
+            fig_fallback, ax = plt.subplots(figsize=(10, 6))
+            sns.scatterplot(data=plot_data, x="valence", y="energy", hue="Mood", alpha=0.6, ax=ax, legend=False)
+            ax.set_title("Mood Map")
+            ax.set_xlabel("Valence")
+            ax.set_ylabel("Energy")
+            st.pyplot(fig_fallback)
+        except Exception as fallback_error:
+            st.error(f"Both Plotly and Matplotlib failed. Error: {fallback_error}")
 
     # ===================== 7. Popularity Prediction Sliders =====================
     st.subheader("🎯 Popularity Prediction Demo")

@@ -53,13 +53,28 @@ with st.spinner("Loading data..."):
     for lang, path in language_sources.items():
         if os.path.exists(path):
             df = pd.read_csv(path)
-            df['track_name'] = df['song_name']
-            df['artist_name'] = df['singer']
-            df['valence'] = df['Valence']
-            df['duration_ms'] = df['duration'].apply(lambda x: int(x.split(':')[0]) * 60000 + int(x.split(':')[1]) * 1000 if isinstance(x, str) and ':' in x else x)
+
+            # Normalize and rename columns
+            df = df.rename(columns={
+                'song_name': 'track_name',
+                'singer': 'artist_name',
+                'Valence': 'valence',
+                'duration': 'duration_str'
+            })
+
+            # Handle duration format (mm:ss -> ms)
+            df['duration_ms'] = df['duration_str'].apply(
+                lambda x: int(x.split(':')[0]) * 60000 + int(x.split(':')[1]) * 1000
+                if isinstance(x, str) and ':' in x else None
+            )
+
             df['language'] = lang
-            df = df.rename(columns=str.lower)
-            df.drop(columns=['song_name', 'singer', 'Valence', 'duration'], inplace=True, errors='ignore')
+            df = df.drop(columns=['duration_str'], errors='ignore')
+
+            # Lowercase and deduplicate column names
+            df.columns = pd.io.parsers.ParserBase({'names': df.columns})._maybe_dedup_names(df.columns)
+            df.columns = [col.lower() for col in df.columns]
+
             language_dfs.append(df)
 
     # Load and clean the Telugu XLSX file

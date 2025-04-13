@@ -164,13 +164,16 @@ if 'genres' not in data_main.columns:
     data_main = data_main.explode('genres')
 
 # ===================== 5. Create cleaned_data for clustering, mood map, etc. =====================
-cleaned_data = data_main[
-    (data_main['valence'] > 0) &
-    (data_main['energy'] > 0) &
-    (data_main['danceability'] > 0) &
-    (data_main['acousticness'] > 0)
-].dropna(subset=['valence', 'energy', 'danceability', 'acousticness'])
+numeric_cols = ['valence', 'energy', 'danceability', 'acousticness']
+cleaned_data = data_main.dropna(subset=numeric_cols + ['track_name', 'artist_name'])
 
+# Filter out invalid values
+for col in numeric_cols:
+    cleaned_data = cleaned_data[cleaned_data[col] > 0]
+
+# Keep only relevant columns
+keep_cols = ['track_name', 'artist_name', 'language', 'genres'] + numeric_cols
+cleaned_data = cleaned_data[keep_cols].copy()
 
 # ===================== MAIN DASHBOARD WITH TABS =====================
 main_tab, analysis_tab = st.tabs(["🎧 Mood Dashboard", "📊 Data Insights"])
@@ -239,19 +242,22 @@ with main_tab:
     features = ['valence', 'energy', 'danceability', 'acousticness']
     model = None
 
-    try:
-        # Use only rows where all features AND popularity are present
-        valid_rows = data_main[features + ['popularity']].dropna()
-        X_pop = valid_rows[features]
-        y_pop = valid_rows['popularity']
+    @st.cache_resource
+    def train_popularity_model(df):
+        features = ['valence', 'energy', 'danceability', 'acousticness']
+        valid_rows = df[features + ['popularity']].dropna()
+        X = valid_rows[features]
+        y = valid_rows['popularity']
 
-        X_train, X_test, y_train, y_test = train_test_split(X_pop, y_pop, test_size=0.2, random_state=42)
         model = RandomForestRegressor(n_estimators=100, random_state=42)
-        model.fit(X_train, y_train)
-        preds = model.predict(X_test)
-        rmse = np.sqrt(mean_squared_error(y_test, preds))
-        st.success(f"🎯 Model trained. RMSE: {rmse:.2f}")
+        model.fit(X, y)
+        return model
+
+    try:
+        model = train_popularity_model(data_main)
+        st.success("🎯 Model trained and cached successfully.")
     except Exception as e:
+        model = None
         st.error(f"Model training failed: {e}")
 
 
@@ -339,12 +345,14 @@ with main_tab:
         filtered_data['Cluster'] = clusters
         filtered_data['Mood'] = filtered_data['Cluster'].map(mood_labels)
 
-        # Make sure Mood exists in cleaned_data for Mood Map plotting
-        cleaned_data = cleaned_data.merge(
-            filtered_data[['track_name', 'artist_name', 'Mood']],
-            on=['track_name', 'artist_name'],
-            how='left'
-        )
+        # Only merge if Mood not already present
+        if 'Mood' not in cleaned_data.columns:
+            cleaned_data = cleaned_data.merge(
+                filtered_data[['track_name', 'artist_name', 'Mood']],
+                on=['track_name', 'artist_name'],
+                how='left'
+            )
+
 
         fig_clusters = px.scatter(
             x=X_pca[:, 0],
@@ -365,16 +373,16 @@ with main_tab:
     st.subheader("🎨 Mood Map: Valence vs Energy by Mood (Interactive)")
     st.markdown("This chart maps songs by **happiness (valence)** vs **intensity (energy)**. Each dot is a song, color = mood 🎨")
 
-    plot_data = pd.DataFrame()
-
-    try:
+    if 'Mood' not in cleaned_data.columns:
+        st.warning("⛔️ No mood clusters found. Please generate them above (PCA + KMeans).")
+    else:
         plot_data = cleaned_data[
             (cleaned_data['valence'] > 0.05) &
             (cleaned_data['energy'] > 0.05) &
             (cleaned_data['Mood'].notna())
         ][['valence', 'energy', 'Mood', 'track_name', 'artist_name']]
 
-        # Optional: clip out extreme values to clean up plot visuals
+        # Optional: clip values to clean up visuals
         plot_data['valence'] = plot_data['valence'].clip(0.05, 0.95)
         plot_data['energy'] = plot_data['energy'].clip(0.05, 0.95)
 
@@ -391,20 +399,6 @@ with main_tab:
         )
         st.plotly_chart(fig_mood_map, use_container_width=True)
 
-    except Exception as e:
-        st.warning("Could not load Plotly chart. Showing fallback.")
-        try:
-            if not plot_data.empty:
-                fig_fallback, ax = plt.subplots(figsize=(10, 6))
-                sns.scatterplot(data=plot_data, x="valence", y="energy", hue="Mood", alpha=0.6, ax=ax, legend=False)
-                ax.set_title("Mood Map")
-                ax.set_xlabel("Valence")
-                ax.set_ylabel("Energy")
-                st.pyplot(fig_fallback)
-            else:
-                st.error("No data available for Mood Map plotting.")
-        except Exception as fallback_error:
-            st.error(f"Both Plotly and Matplotlib failed. Error: {fallback_error}")
 
     # ===================== 7. Popularity Prediction Sliders =====================
     st.subheader("🎯 Popularity Prediction Demo")

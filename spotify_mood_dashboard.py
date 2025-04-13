@@ -5,6 +5,9 @@ import seaborn as sns
 import numpy as np
 import os
 import plotly.express as px
+import streamlit as st
+import requests
+from urllib.parse import quote
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
@@ -13,6 +16,47 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
 from math import pi
 import random
+
+# Get credentials from Streamlit secrets
+client_id = st.secrets["spotify_client_id"]
+client_secret = st.secrets["spotify_client_secret"]
+
+# Step 1: Get an access token from Spotify API
+def get_spotify_token():
+    auth_url = "https://accounts.spotify.com/api/token"
+    auth_response = requests.post(auth_url, {
+        'grant_type': 'client_credentials',
+        'client_id': client_id,
+        'client_secret': client_secret,
+    })
+    if auth_response.status_code == 200:
+        return auth_response.json().get("access_token")
+    return None
+
+# Step 2: Search for a track by name (and optionally artist)
+def search_spotify_track(track_name, artist_name=None):
+    token = get_spotify_token()
+    if not token:
+        return None
+
+    headers = {
+        "Authorization": f"Bearer {token}"
+    }
+
+    query = f"track:{track_name}"
+    if artist_name:
+        query += f" artist:{artist_name}"
+    query = quote(query)
+
+    search_url = f"https://api.spotify.com/v1/search?q={query}&type=track&limit=1"
+    response = requests.get(search_url, headers=headers)
+
+    if response.status_code == 200:
+        items = response.json().get("tracks", {}).get("items", [])
+        if items:
+            return items[0]["id"]  # Return Spotify track ID
+    return None
+
 
 # Set page layout
 st.set_page_config(layout="wide", page_title="Spotify Mood Dashboard", page_icon="🎵")
@@ -150,7 +194,7 @@ st.title("🎵 Spotify Mood Dashboard")
 
 available_languages = data_1m['language'].dropna().unique() if 'language' in data_1m.columns else []
 
-st.sidebar.write("Languages found in data_1m:", data_1m['language'].unique() if 'language' in data_1m.columns else "No language column")
+#st.sidebar.write("Languages found in data_1m:", data_1m['language'].unique() if 'language' in data_1m.columns else "No language column")
 
 if len(available_languages) > 0:
     selected_language = st.sidebar.selectbox("🌍 Filter by Language", ["All"] + sorted(available_languages))
@@ -409,13 +453,18 @@ spotify_base = "https://open.spotify.com/track/"
 
 for i, row in recommendations.iterrows():
     pop_display = row['popularity'] if pd.notnull(row['popularity']) else "Unknown"
-    if 'track_id' in row and pd.notnull(row['track_id']):
-        spotify_link = spotify_base + row['track_id']
+
+    track_id = row.get("track_id")
+
+    # If track_id is missing, use Spotify API to search
+    if pd.isnull(track_id):
+       track_id = search_spotify_track(row["track_name"], row.get("artist_name"))
+
+    if track_id:
+        spotify_link = f"https://open.spotify.com/track/{track_id}"
         st.markdown(f"**{row['track_name']}** by *{row['artist_name']}* — Popularity: {pop_display} [🎧 Open on Spotify]({spotify_link})")
     else:
         st.markdown(f"**{row['track_name']}** by *{row['artist_name']}* — Popularity: {pop_display}")
-
-
 
 # ===================== 🎲 Surprise Me =====================
 if st.button("🎲 Surprise Me with a Track!"):

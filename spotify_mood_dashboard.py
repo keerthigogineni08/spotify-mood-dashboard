@@ -299,7 +299,8 @@ if selected_track and 'Mood' in data_1m.columns:
 else:
     mood = "Chill & Mellow"
 
-st.image(gif_map.get(mood, gif_map["Chill & Mellow"]), caption=f"You're vibing with {mood} 🎶", use_container_width=True)
+st.markdown(f"🎶 You're vibing with **{mood}** mood today!")
+#st.image(gif_map.get(mood, gif_map["Chill & Mellow"]), caption=f"You're vibing with {mood} 🎶", use_container_width=True)
 
 # ===================== 🔮 Popularity Prediction =====================
 st.subheader("🔮 Predicting Popularity (ML Model)")
@@ -307,14 +308,17 @@ try:
     X_pop = data_1m[features].dropna()
     y_pop = data_1m.loc[X_pop.index, 'popularity']
 
-    with st.spinner("Training model..."):
-        X_train, X_test, y_train, y_test = train_test_split(X_pop, y_pop, test_size=0.2, random_state=42)
-        model = RandomForestRegressor(n_estimators=100, random_state=42)
-        model.fit(X_train, y_train)
-        preds = model.predict(X_test)
-        rmse = mean_squared_error(y_test, preds) ** 0.5
+    if y_pop.isnull().any():
+        st.warning("⚠️ Some songs are missing popularity scores. Popularity prediction skipped.")
+    else:
+        with st.spinner("Training model..."):
+            X_train, X_test, y_train, y_test = train_test_split(X_pop, y_pop, test_size=0.2, random_state=42)
+            model = RandomForestRegressor(n_estimators=100, random_state=42)
+            model.fit(X_train, y_train)
+            preds = model.predict(X_test)
+            rmse = mean_squared_error(y_test, preds) ** 0.5
 
-    st.success(f"🎯 Popularity Prediction RMSE: {rmse:.2f}")
+        st.success(f"🎯 Popularity Prediction RMSE: {rmse:.2f}")
 
     st.subheader("🎯 Popularity Prediction Demo")
     valence = st.slider("Valence (Happiness)", 0.0, 1.0, 0.5)
